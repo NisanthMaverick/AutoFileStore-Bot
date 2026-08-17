@@ -1,0 +1,7 @@
+pyrofork
+tgcrypto==1.2.5
+SQLAlchemy>=2.0.0
+python-dotenv==1.0.1
+psycopg2-binary
+httpx
+aiohttp
