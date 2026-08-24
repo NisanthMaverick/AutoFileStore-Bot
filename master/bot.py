@@ -114,6 +114,10 @@ def register_main_bot_handlers(app: Client):
         from .states_files import handle_files_states
         await handle_files_states(client, message, state, state_data, message_id)
 
+    # --- Weekly Web Series Automation Handler ---
+    from .automation import register_automation_handlers
+    register_automation_handlers(app)
+
     # --- Callback Query Handler ---
     @app.on_callback_query()
     async def cb_query(client: Client, callback: CallbackQuery):

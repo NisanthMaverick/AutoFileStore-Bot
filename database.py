@@ -19,7 +19,7 @@ from db.crud_series import (
     get_file, delete_file, list_files,
     update_section_parent, list_all_folders,
     create_journey, get_journey, list_journeys, delete_journey,
-    update_journey_settings, reset_journey_locks
+    update_journey_settings, reset_journey_locks, get_series_by_channel
 )
 
 async def get_formatted_more_info_msg(settings: dict) -> str:

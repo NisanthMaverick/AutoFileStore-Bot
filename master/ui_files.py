@@ -85,13 +85,25 @@ async def show_folder_management(client: Client, chat_id: int, message_id: int, 
     is_locked_val = series.get("is_locked", False) if is_root else current_sec.get("is_locked", False)
     locked_status_str = "Enabled 🔒 (Premium Required)" if is_locked_val else "Disabled 🔓"
     
-    text = (
-        f"⚙️ **{type_str} Settings: {name}**\n\n"
-        f"💬 **Custom Message:**\n`{custom_msg_status}`\n\n"
-        f"🔢 **Buttons per Row:** `{buttons_per_row}`\n\n"
-        f"🔒 **Individual Lock:** `{locked_status_str}`\n\n"
-        "Configure folder settings or perform administrative actions below:"
-    )
+    if is_root:
+        src_chan = series.get("source_channel_id")
+        src_chan_status = f"`{src_chan}`" if src_chan else "_None configured_"
+        text = (
+            f"⚙️ **{type_str} Settings: {name}**\n\n"
+            f"💬 **Custom Message:**\n`{custom_msg_status}`\n\n"
+            f"🔢 **Buttons per Row:** `{buttons_per_row}`\n\n"
+            f"🔒 **Individual Lock:** `{locked_status_str}`\n\n"
+            f"📢 **Source Channel:** {src_chan_status}\n\n"
+            "Configure folder settings or perform administrative actions below:"
+        )
+    else:
+        text = (
+            f"⚙️ **{type_str} Settings: {name}**\n\n"
+            f"💬 **Custom Message:**\n`{custom_msg_status}`\n\n"
+            f"🔢 **Buttons per Row:** `{buttons_per_row}`\n\n"
+            f"🔒 **Individual Lock:** `{locked_status_str}`\n\n"
+            "Configure folder settings or perform administrative actions below:"
+        )
 
     buttons_list = [
         [
@@ -106,6 +118,15 @@ async def show_folder_management(client: Client, chat_id: int, message_id: int, 
             InlineKeyboardButton("🔓 Disable Individual Lock" if is_locked_val else "🔒 Enable Individual Lock", callback_data=f"toggle_indiv_lock_{series_id}_{section_id}_{library_skip}")
         ]
     ]
+
+    if is_root:
+        buttons_list.append([
+            InlineKeyboardButton("📢 Channel Config", callback_data=f"config_series_channel_{series_id}_{library_skip}"),
+            InlineKeyboardButton("🔍 Scan Channel", callback_data=f"scan_mode_choose_{series_id}_{library_skip}")
+        ])
+        buttons_list.append([
+            InlineKeyboardButton("🗑 Delete Entire Series", callback_data=f"delete_series_confirm_{series_id}_{library_skip}")
+        ])
 
     if not is_root:
         buttons_list.append([

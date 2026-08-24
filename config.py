@@ -37,3 +37,17 @@ if SUBSCRIPTION_DATABASE_URL.startswith("postgres://"):
 if not API_ID or not API_HASH or not MAIN_BOT_TOKEN or not OWNER_ID or not DATABASE_URL:
     raise ValueError("Missing critical configuration in environment variables or .env file.")
 
+# AI Web Series Automation Settings
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
+WEEKLY_SOURCE_CHANNELS = []
+raw_sources = os.environ.get("WEEKLY_SOURCE_CHANNELS", "")
+if raw_sources:
+    for item in raw_sources.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        try:
+            WEEKLY_SOURCE_CHANNELS.append(int(item))
+        except ValueError:
+            WEEKLY_SOURCE_CHANNELS.append(item)
+

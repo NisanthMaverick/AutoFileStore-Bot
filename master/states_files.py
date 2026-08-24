@@ -286,6 +286,63 @@ async def handle_files_states(client: Client, message: Message, state: str, stat
         await message.reply_text(f"✅ Series '{title}' created successfully!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Series Library", callback_data=f"list_j_series_{journey_id}_0")]]))
         return True
 
+    # 2.85 Waiting for Series Source Channel Config
+    elif state == "waiting_for_series_channel":
+        text_val = message.text.strip().lower() if message.text else ""
+        series_id = state_data["data"]["series_id"]
+        library_skip = state_data["data"]["library_skip"]
+        
+        if text_val in ["none", "reset", "remove"]:
+            await database.update_series_settings(series_id, source_channel_id="none")
+            ADMIN_STATES.pop(user_id, None)
+            
+            success_text = "✅ **Source Channel configuration cleared!**"
+            markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Settings", callback_data=f"manage_folder_opt_{series_id}_0_{library_skip}")]])
+            await message.reply_text(success_text, reply_markup=markup)
+            return True
+            
+        channel_id = None
+        channel_title = "Channel"
+        
+        if message.forward_from_chat:
+            channel_id = message.forward_from_chat.id
+            channel_title = message.forward_from_chat.title or "Channel"
+        else:
+            pasted = message.text.strip()
+            if pasted.startswith("-100") or pasted.isdigit():
+                try:
+                    chat = await client.get_chat(int(pasted))
+                    channel_id = chat.id
+                    channel_title = chat.title or "Channel"
+                except Exception:
+                    channel_id = int(pasted)
+            elif pasted.startswith("@") or pasted.isalnum():
+                try:
+                    chat = await client.get_chat(pasted)
+                    channel_id = chat.id
+                    channel_title = chat.title or "Channel"
+                except Exception as e:
+                    return await message.reply_text(f"❌ Could not find chat: {e}. Please forward a message from the channel or verify the ID/username.")
+                    
+        if not channel_id:
+            return await message.reply_text("❌ Invalid input. Please forward a message from the channel, or paste the channel ID (e.g. `-100...`) or username (e.g. `@channel`).")
+            
+        try:
+            member = await client.get_chat_member(channel_id, "me")
+            if member.status not in ["administrator", "owner"]:
+                await message.reply_text("⚠️ Warning: The bot is in the chat but does not seem to be an Administrator. Please promote the bot to Administrator in the channel!")
+        except Exception as e:
+            await message.reply_text(f"⚠️ Warning: Bot could not verify admin rights in the channel ({e}). Make sure the bot is an Administrator in the channel!")
+            
+        await database.update_series_settings(series_id, source_channel_id=str(channel_id))
+        ADMIN_STATES.pop(user_id, None)
+        await log_admin_action(f"📢 **Series Source Channel Configured**: {channel_title} (`{channel_id}`) for Series ID {series_id} by {message.from_user.mention}")
+        
+        success_text = f"✅ **Source Channel configured successfully!**\n\n📢 **Channel:** {channel_title}\n🆔 **ID:** `{channel_id}`"
+        markup = InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Settings", callback_data=f"manage_folder_opt_{series_id}_0_{library_skip}")]])
+        await message.reply_text(success_text, reply_markup=markup)
+        return True
+
     # 2.8 Waiting for Journey Unlock Duration
     elif state == "waiting_for_j_unlock_duration":
         val = message.text.strip().lower()

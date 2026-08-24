@@ -107,6 +107,7 @@ def _get_series_sync(series_id: int):
                 "is_active": s.is_active,
                 "journey_id": s.journey_id,
                 "is_locked": s.is_locked,
+                "source_channel_id": s.source_channel_id,
                 "created_at": s.created_at
             }
         return None
@@ -128,6 +129,7 @@ def _list_series_sync(journey_id: int = None):
             "is_active": s.is_active,
             "journey_id": s.journey_id,
             "is_locked": s.is_locked,
+            "source_channel_id": s.source_channel_id,
             "created_at": s.created_at
         } for s in series_list]
 
@@ -174,7 +176,7 @@ def _list_sections_sync(series_id: int, parent_id: int = None):
         else:
             query = query.filter(SeriesSection.parent_id == parent_id)
         sections = query.order_by(SeriesSection.id).all()
-        return [{
+        sec_list = [{
             "id": s.id,
             "name": s.name,
             "series_id": s.series_id,
@@ -186,6 +188,48 @@ def _list_sections_sync(series_id: int, parent_id: int = None):
             "is_locked": s.is_locked,
             "created_at": s.created_at
         } for s in sections]
+        
+        # Sort by stored sort_order, then fall back to natural sort
+        import re
+        def get_natural_key(x):
+            name = x["name"] or ""
+            numbers = [int(n) for n in re.findall(r'\d+', name)]
+            if numbers:
+                return (0, numbers[0], name.lower())
+            return (1, 0, name.lower())
+        
+        # Use sort_order if any non-zero value assigned, else natural sort
+        has_sort_order = any(s.get("sort_order", 0) for s in sec_list)
+        if has_sort_order:
+            sec_list.sort(key=lambda x: (x.get("sort_order") or 0, get_natural_key(x)))
+        else:
+            sec_list.sort(key=get_natural_key)
+        return sec_list
+
+def _reorder_siblings_sync(series_id: int, parent_id):
+    """Re-assigns sort_order to all siblings under parent_id using natural sort.
+    Called automatically after a new section is created so old out-of-order
+    buttons are repositioned without any manual admin action."""
+    import re
+    with SessionLocal() as session:
+        query = session.query(SeriesSection).filter(SeriesSection.series_id == series_id)
+        if parent_id is None:
+            query = query.filter(SeriesSection.parent_id == None)
+        else:
+            query = query.filter(SeriesSection.parent_id == parent_id)
+        siblings = query.all()
+
+        def natural_key(sec):
+            name = sec.name or ""
+            numbers = [int(n) for n in re.findall(r'\d+', name)]
+            if numbers:
+                return (0, numbers[0], name.lower())
+            return (1, 0, name.lower())
+
+        siblings.sort(key=natural_key)
+        for idx, sec in enumerate(siblings):
+            sec.sort_order = idx + 1
+        session.commit()
 
 def _delete_section_sync(section_id: int) -> bool:
     with SessionLocal() as session:
@@ -222,7 +266,7 @@ def _clear_section_files_sync(section_id: int):
         session.query(FileRecord).filter(FileRecord.section_id == section_id).delete()
         session.commit()
 
-def _update_series_settings_sync(series_id: int, custom_msg=None, buttons_per_row=None, title=None, description=None, display_order=None, custom_pic=None, is_active=None, journey_id=None, is_locked=None) -> bool:
+def _update_series_settings_sync(series_id: int, custom_msg=None, buttons_per_row=None, title=None, description=None, display_order=None, custom_pic=None, is_active=None, journey_id=None, is_locked=None, source_channel_id=None) -> bool:
     with SessionLocal() as session:
         s = session.query(Series).filter(Series.id == series_id).first()
         if s:
@@ -244,6 +288,8 @@ def _update_series_settings_sync(series_id: int, custom_msg=None, buttons_per_ro
                 s.journey_id = journey_id
             if is_locked is not None:
                 s.is_locked = is_locked
+            if source_channel_id is not None:
+                s.source_channel_id = None if source_channel_id == "none" else source_channel_id
             session.commit()
             return True
         return False
@@ -369,7 +415,15 @@ async def delete_series(series_id: int):
     return await asyncio.to_thread(_delete_series_sync, series_id)
 
 async def create_section(name: str, series_id: int, parent_id: int = None, sec_type: str = "folder") -> int:
-    return await asyncio.to_thread(_create_section_sync, name, series_id, parent_id, sec_type)
+    section_id = await asyncio.to_thread(_create_section_sync, name, series_id, parent_id, sec_type)
+    # Auto-reorder all siblings so old out-of-order buttons get fixed immediately
+    await asyncio.to_thread(_reorder_siblings_sync, series_id, parent_id)
+    return section_id
+
+async def reorder_siblings(series_id: int, parent_id=None):
+    """Explicitly reorder all siblings under parent_id. Call this to fix
+    existing buttons that were created in the wrong order."""
+    return await asyncio.to_thread(_reorder_siblings_sync, series_id, parent_id)
 
 async def get_section(section_id: int):
     return await asyncio.to_thread(_get_section_sync, section_id)
@@ -389,8 +443,8 @@ async def update_section(section_id: int, name: str) -> bool:
 async def clear_section_files(section_id: int):
     await asyncio.to_thread(_clear_section_files_sync, section_id)
 
-async def update_series_settings(series_id: int, custom_msg=None, buttons_per_row=None, title=None, description=None, display_order=None, custom_pic=None, is_active=None, journey_id=None, is_locked=None):
-    return await asyncio.to_thread(_update_series_settings_sync, series_id, custom_msg, buttons_per_row, title, description, display_order, custom_pic, is_active, journey_id, is_locked)
+async def update_series_settings(series_id: int, custom_msg=None, buttons_per_row=None, title=None, description=None, display_order=None, custom_pic=None, is_active=None, journey_id=None, is_locked=None, source_channel_id=None):
+    return await asyncio.to_thread(_update_series_settings_sync, series_id, custom_msg, buttons_per_row, title, description, display_order, custom_pic, is_active, journey_id, is_locked, source_channel_id)
 
 async def update_section_settings(section_id: int, custom_msg=None, buttons_per_row=None, custom_pic=None, is_locked=None):
     return await asyncio.to_thread(_update_section_settings_sync, section_id, custom_msg, buttons_per_row, custom_pic, is_locked)
@@ -458,4 +512,27 @@ async def update_section_parent(section_id: int, parent_id: int = None) -> bool:
 
 async def list_all_folders(series_id: int):
     return await asyncio.to_thread(_list_all_folders_sync, series_id)
+
+def _get_series_by_channel_sync(channel_id: str):
+    with SessionLocal() as session:
+        s = session.query(Series).filter(Series.source_channel_id == channel_id).first()
+        if s:
+            return {
+                "id": s.id,
+                "title": s.title,
+                "description": s.description,
+                "custom_msg": s.custom_msg,
+                "buttons_per_row": s.buttons_per_row,
+                "display_order": s.display_order,
+                "custom_pic": s.custom_pic,
+                "is_active": s.is_active,
+                "journey_id": s.journey_id,
+                "is_locked": s.is_locked,
+                "source_channel_id": s.source_channel_id,
+                "created_at": s.created_at
+            }
+        return None
+
+async def get_series_by_channel(channel_id: str):
+    return await asyncio.to_thread(_get_series_by_channel_sync, channel_id)
 

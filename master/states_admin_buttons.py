@@ -105,20 +105,33 @@ async def handle_buttons_states(client: Client, message: Message, state: str, st
             bot_me = await temp_client.get_me()
             await temp_client.stop()
 
+            # Save clone bot in DB
             await database.add_clone_bot(token, bot_me.username, bot_me.first_name)
-            ADMIN_STATES.pop(user_id, None)
-            await log_admin_action(f"🛡️ **Clone Bot Added**: @{bot_me.username} ({bot_me.first_name}) by {message.from_user.mention}")
             
-            is_user_admin = await database.is_admin(user_id, OWNER_ID)
-            if is_user_admin:
-                if message_id:
-                    await show_manage_clones(client, message.chat.id, message_id)
+            # Start the clone bot process immediately
+            from clones.tree import start_clone_bot
+            started = await start_clone_bot(token)
+            if started:
+                await database.set_clone_bot_status(token, True)
+                settings = await database.get_settings()
+                if not settings.get("primary_clone_username"):
+                    await database.update_settings({"primary_clone_username": bot_me.username})
+                    
+                ADMIN_STATES.pop(user_id, None)
+                await log_admin_action(f"🛡️ **Clone Bot Added & Activated**: @{bot_me.username} ({bot_me.first_name}) by {message.from_user.mention}")
+                
+                is_user_admin = await database.is_admin(user_id, OWNER_ID)
+                if is_user_admin:
+                    if message_id:
+                        await show_manage_clones(client, message.chat.id, message_id)
+                    else:
+                        await message.reply_text(f"✅ Clone Bot @{bot_me.username} added and started successfully!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Clones", callback_data="manage_clones")]]))
                 else:
-                    await message.reply_text("✅ Clone Bot added!", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Clones", callback_data="manage_clones")]]))
+                    await message.reply_text(f"✅ Clone Bot @{bot_me.username} added, started, and deployed successfully!")
             else:
-                await message.reply_text(f"✅ Clone Bot @{bot_me.username} added and deployed successfully!")
+                raise ValueError("Valid token but failed to start the bot runner client.")
         except Exception as e:
-            err_text = f"❌ Failed to validate token: {e}\n\nPlease check the token and send it again or send /cancel."
+            err_text = f"❌ Failed to start clone bot: {e}\n\nPlease check the token and send it again or send /cancel."
             if message_id:
                 try:
                     await client.edit_message_text(chat_id=message.chat.id, message_id=message_id, text=err_text, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Cancel", callback_data="manage_clones")]]))

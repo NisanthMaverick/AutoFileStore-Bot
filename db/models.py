@@ -78,6 +78,7 @@ class Series(Base):
     is_active = Column(Boolean, default=True)
     journey_id = Column(Integer, ForeignKey("journeys.id", ondelete="CASCADE"), nullable=True)
     is_locked = Column(Boolean, default=False)
+    source_channel_id = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class SeriesSection(Base):
@@ -91,6 +92,7 @@ class SeriesSection(Base):
     buttons_per_row = Column(Integer, default=2)
     custom_pic = Column(String, nullable=True)
     is_locked = Column(Boolean, default=False)
+    sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 
 class FileRecord(Base):
@@ -166,6 +168,10 @@ def db_init():
     if "created_at" not in columns_sec:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE series_sections ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+            conn.commit()
+    if "sort_order" not in columns_sec:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE series_sections ADD COLUMN sort_order INTEGER DEFAULT 0"))
             conn.commit()
 
     # settings columns check
@@ -305,6 +311,10 @@ def db_init():
     if "created_at" not in columns_ser:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE series ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP"))
+            conn.commit()
+    if "source_channel_id" not in columns_ser:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE series ADD COLUMN source_channel_id VARCHAR DEFAULT NULL"))
             conn.commit()
 
     # series_sections is_locked column check
