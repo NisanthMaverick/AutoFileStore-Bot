@@ -4,11 +4,14 @@ import asyncio
 from pyrogram import Client, filters
 from pyrogram.errors import FloodWait
 from pyrogram.types import Message
+from datetime import datetime
 import config
 import database
 from db.models import SessionLocal, FileRecord, SeriesSection
 from .ai_parser import parse_file_metadata
 from .helpers import log_admin_action, get_readable_size
+from .fillings import format_fillings, to_small_text
+from .notifications import trigger_journey_update_notification
 
 def _check_file_duplicate_sync(series_id: int, file_name: str, file_size: int) -> bool:
     with SessionLocal() as session:
@@ -226,16 +229,28 @@ async def _get_or_create_section_for_file(series_id: int, metadata: dict) -> int
             if sec["sec_type"] == "files" and matches_episode_range(sec["name"], start, end):
                 return sec["id"]
                 
-        # Guess style and create Episode Range Files Section
-        style = guess_episode_button_style(range_sections)
-        if style == "brackets_spaces":
-            name = f"EP ({start:02d} - {end:02d})"
-        elif style == "brackets_spaces_dash":
-            name = f"EP ({start:02d} – {end:02d})"
-        elif style == "spaces":
-            name = f"EP {start:02d} - {end:02d}"
-        else:
-            name = f"EP {start:02d} – {end:02d}"
+        # Use Journey button_name_template if configured, or default with superscript date
+        series_ref = await database.get_series(series_id)
+        journey = None
+        if series_ref and series_ref.get("journey_id"):
+            journey = await database.get_journey(series_ref["journey_id"])
+            
+        btn_tmpl = (journey and journey.get("button_name_template")) or "📥 Ep ({start} - {end}) {date_small}"
+        
+        now = datetime.now()
+        fill_data = {
+            "series_name": series_ref["title"] if series_ref else "",
+            "journey_name": journey["name"] if journey else "",
+            "start": f"{start:02d}",
+            "end": f"{end:02d}",
+            "episodes": f"{start:02d} - {end:02d}",
+            "season": f"{season_num:02d}",
+            "date": now.strftime("%d-%m-%Y"),
+            "date_short": now.strftime("%d-%m-%y"),
+            "date_small": to_small_text(now.strftime("%d-%m-%y")),
+            "quality": quality
+        }
+        name = format_fillings(btn_tmpl, fill_data)
             
         return await database.create_section(
             name=name,
@@ -576,6 +591,9 @@ async def _import_single_file_sequentially(client: Client, message: Message, ser
     
     primary = settings.get("primary_clone_username")
     link_str = f"https://t.me/{primary}?start=file_{file_code}" if primary else f"file_{file_code}"
+    
+    # Trigger Journey update notification message to channel if configured
+    asyncio.create_task(trigger_journey_update_notification(client, series_id, metadata))
     
     await log_admin_action(
         f"🤖 **AI Auto-Stored File**\n"

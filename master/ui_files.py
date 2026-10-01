@@ -320,8 +320,11 @@ async def show_journey_detail(client: Client, chat_id: int, message_id: int, jou
     active_lock = "Enabled ✅" if journey["lock_active_series_enabled"] else "Disabled ❌"
     old_lock = "Enabled ✅" if journey["lock_old_series_enabled"] else "Disabled ❌"
     indiv_lock = "Enabled ✅" if journey["lock_individual_enabled"] else "Disabled ❌"
-    db_channel = journey.get("db_channel_id")
-    db_status = f"`{db_channel}`" if db_channel else "_Default Settings Fallback_ ⚠️"
+    up_chan = journey.get("update_channel_id")
+    up_chan_status = f"`{up_chan}`" if up_chan else "_Disabled / Not Configured_ ❌"
+    
+    up_tmpl = journey.get("update_msg_template") or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}"
+    btn_tmpl = journey.get("button_name_template") or "📥 Ep ({start} - {end}) {date_small}"
     
     desc = journey.get("description") or "_No description set._"
     text = (
@@ -332,8 +335,12 @@ async def show_journey_detail(client: Client, chat_id: int, message_id: int, jou
         f"• **Lock Active Series:** {active_lock}\n"
         f"• **Lock Old Series:** {old_lock}\n"
         f"• **Individual Locks:** {indiv_lock}\n\n"
-        f"📁 **DB Channel Settings:**\n"
+        f"📁 **DB Storage Channel:**\n"
         f"• **Channel ID:** {db_status}\n\n"
+        f"📢 **Episode Update Alerts:**\n"
+        f"• **Channel ID:** {up_chan_status}\n"
+        f"• **Msg Template:** `{up_tmpl}`\n"
+        f"• **Button Template:** `{btn_tmpl}`\n\n"
         f"Select an administrative option below:"
     )
     
@@ -345,6 +352,13 @@ async def show_journey_detail(client: Client, chat_id: int, message_id: int, jou
         [
             InlineKeyboardButton("🔒 Access Lock Settings", callback_data=f"j_lock_settings_{journey_id}"),
             InlineKeyboardButton("📁 Configure DB Channel", callback_data=f"config_j_db_{journey_id}")
+        ],
+        [
+            InlineKeyboardButton("📢 Update Channel", callback_data=f"config_j_up_chan_{journey_id}"),
+            InlineKeyboardButton("💬 Update Msg Template", callback_data=f"config_j_up_tmpl_{journey_id}")
+        ],
+        [
+            InlineKeyboardButton("🔘 Button Format Template", callback_data=f"config_j_btn_tmpl_{journey_id}")
         ],
         [
             InlineKeyboardButton("✏️ Rename Journey", callback_data=f"rename_journey_opt_{journey_id}"),

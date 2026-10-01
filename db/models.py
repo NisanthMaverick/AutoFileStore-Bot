@@ -62,8 +62,10 @@ class Journey(Base):
     lock_old_series_enabled = Column(Boolean, default=True)
     lock_day_based_enabled = Column(Boolean, default=False)
     lock_time_window = Column(Integer, default=0)
-    lock_individual_enabled = Column(Boolean, default=False)
     db_channel_id = Column(String, default="")
+    update_channel_id = Column(String, default="")
+    update_msg_template = Column(Text, default="{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}")
+    button_name_template = Column(String, default="📥 Ep ({start} - {end}) {date_small}")
     is_locked = Column(Boolean, default=False)
 
 class Series(Base):
@@ -274,6 +276,18 @@ def db_init():
     if "description" not in columns_journeys:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE journeys ADD COLUMN description TEXT DEFAULT ''"))
+            conn.commit()
+    if "update_channel_id" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN update_channel_id VARCHAR DEFAULT ''"))
+            conn.commit()
+    if "update_msg_template" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN update_msg_template TEXT DEFAULT '{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}'"))
+            conn.commit()
+    if "button_name_template" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN button_name_template VARCHAR DEFAULT '📥 Ep ({start} - {end}) {date_small}'"))
             conn.commit()
 
 

@@ -13,6 +13,8 @@ from .ui_files import (
     show_journey_active_series_config, show_edit_library_message_menu
 )
 from .ui_config import show_auto_delete_menu
+from .notifications import trigger_journey_update_notification
+from .fillings import get_fillings_help_text
 
 def to_small_text(text: str) -> str:
     superscript_map = {
@@ -1688,6 +1690,57 @@ async def handle_series_callbacks(client: Client, callback: CallbackQuery, data:
             "Normal users on clone bots will download files directly from this channel.\n\n"
             "To reset and use the default global DB channel, send `none` or `default`.\n\n"
             "❌ Send `/cancel` to abort.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data=f"manage_journey_{journey_id}")]])
+        )
+        return True
+
+    elif data.startswith("config_j_up_chan_"):
+        journey_id = int(data.split("_")[4])
+        await callback.answer()
+        ADMIN_STATES[user_id] = {"state": "waiting_for_j_update_channel", "message_id": callback.message.id, "data": {"journey_id": journey_id}}
+        await callback.message.edit_text(
+            "📢 **Configure Episode Update Channel**\n\n"
+            "Please send the numerical Telegram Channel ID (e.g. `-1001234567890`) where episode update alert messages will be automatically posted when new files are added.\n\n"
+            "Make sure the Bot is added as an **Administrator** in that channel!\n\n"
+            "To disable notification posts for this Journey, send `none` or `disable`.\n\n"
+            "❌ Send `/cancel` to abort.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data=f"manage_journey_{journey_id}")]])
+        )
+        return True
+
+    elif data.startswith("config_j_up_tmpl_"):
+        journey_id = int(data.split("_")[4])
+        j = await database.get_journey(journey_id)
+        current_tmpl = (j and j.get("update_msg_template")) or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}"
+        help_text = get_fillings_help_text()
+        await callback.answer()
+        ADMIN_STATES[user_id] = {"state": "waiting_for_j_update_template", "message_id": callback.message.id, "data": {"journey_id": journey_id}}
+        await callback.message.edit_text(
+            f"💬 **Configure Episode Update Notification Template**\n\n"
+            f"Current Template:\n`{current_tmpl}`\n\n"
+            f"{help_text}\n"
+            f"Send your new message template below.\n"
+            f"To reset to default template, send `default`.\n\n"
+            f"❌ Send `/cancel` to abort.",
+            reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data=f"manage_journey_{journey_id}")]])
+        )
+        return True
+
+    elif data.startswith("config_j_btn_tmpl_"):
+        journey_id = int(data.split("_")[4])
+        j = await database.get_journey(journey_id)
+        current_tmpl = (j and j.get("button_name_template")) or "📥 Ep ({start} - {end}) {date_small}"
+        help_text = get_fillings_help_text()
+        await callback.answer()
+        ADMIN_STATES[user_id] = {"state": "waiting_for_j_button_template", "message_id": callback.message.id, "data": {"journey_id": journey_id}}
+        await callback.message.edit_text(
+            f"🔘 **Configure Button Name Format Template**\n\n"
+            f"Current Button Template:\n`{current_tmpl}`\n\n"
+            f"{help_text}\n"
+            f"Example format:\n`📥 Ep ({start} - {end}) {date_small}` ➔ Renders as: `📥 Ep (57 - 60) ⁰⁶⁻⁰⁸⁻²⁶`\n\n"
+            f"Send your new button template below.\n"
+            f"To reset to default template, send `default`.\n\n"
+            f"❌ Send `/cancel` to abort.",
             reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("Cancel", callback_data=f"manage_journey_{journey_id}")]])
         )
         return True

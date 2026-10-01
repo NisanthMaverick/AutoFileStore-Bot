@@ -334,6 +334,9 @@ def _get_journey_sync(journey_id: int):
                 "lock_time_window": j.lock_time_window,
                 "lock_individual_enabled": j.lock_individual_enabled,
                 "db_channel_id": j.db_channel_id,
+                "update_channel_id": getattr(j, "update_channel_id", "") or "",
+                "update_msg_template": getattr(j, "update_msg_template", "") or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}",
+                "button_name_template": getattr(j, "button_name_template", "") or "📥 Ep ({start} - {end}) {date_small}",
                 "is_locked": j.is_locked
             }
         return None
@@ -352,6 +355,9 @@ def _list_journeys_sync():
             "lock_time_window": j.lock_time_window,
             "lock_individual_enabled": j.lock_individual_enabled,
             "db_channel_id": j.db_channel_id,
+            "update_channel_id": getattr(j, "update_channel_id", "") or "",
+            "update_msg_template": getattr(j, "update_msg_template", "") or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}",
+            "button_name_template": getattr(j, "button_name_template", "") or "📥 Ep ({start} - {end}) {date_small}",
             "is_locked": j.is_locked
         } for j in journeys]
 
@@ -364,7 +370,7 @@ def _delete_journey_sync(journey_id: int) -> bool:
             return True
         return False
 
-def _update_journey_settings_sync(journey_id: int, name=None, description=None, lock_buttons_enabled=None, lock_active_series_enabled=None, lock_old_series_enabled=None, lock_day_based_enabled=None, lock_time_window=None, lock_individual_enabled=None, db_channel_id=None, is_locked=None) -> bool:
+def _update_journey_settings_sync(journey_id: int, name=None, description=None, lock_buttons_enabled=None, lock_active_series_enabled=None, lock_old_series_enabled=None, lock_day_based_enabled=None, lock_time_window=None, lock_individual_enabled=None, db_channel_id=None, update_channel_id=None, update_msg_template=None, button_name_template=None, is_locked=None) -> bool:
     with SessionLocal() as session:
         j = session.query(Journey).filter(Journey.id == journey_id).first()
         if j:
@@ -386,6 +392,12 @@ def _update_journey_settings_sync(journey_id: int, name=None, description=None, 
                 j.lock_individual_enabled = lock_individual_enabled
             if db_channel_id is not None:
                 j.db_channel_id = db_channel_id
+            if update_channel_id is not None:
+                j.update_channel_id = update_channel_id
+            if update_msg_template is not None:
+                j.update_msg_template = update_msg_template
+            if button_name_template is not None:
+                j.button_name_template = button_name_template
             if is_locked is not None:
                 j.is_locked = is_locked
             session.commit()
@@ -461,8 +473,8 @@ async def list_journeys():
 async def delete_journey(journey_id: int):
     return await asyncio.to_thread(_delete_journey_sync, journey_id)
 
-async def update_journey_settings(journey_id: int, name=None, description=None, lock_buttons_enabled=None, lock_active_series_enabled=None, lock_old_series_enabled=None, lock_day_based_enabled=None, lock_time_window=None, lock_individual_enabled=None, db_channel_id=None, is_locked=None):
-    return await asyncio.to_thread(_update_journey_settings_sync, journey_id, name, description, lock_buttons_enabled, lock_active_series_enabled, lock_old_series_enabled, lock_day_based_enabled, lock_time_window, lock_individual_enabled, db_channel_id, is_locked)
+async def update_journey_settings(journey_id: int, name=None, description=None, lock_buttons_enabled=None, lock_active_series_enabled=None, lock_old_series_enabled=None, lock_day_based_enabled=None, lock_time_window=None, lock_individual_enabled=None, db_channel_id=None, update_channel_id=None, update_msg_template=None, button_name_template=None, is_locked=None):
+    return await asyncio.to_thread(_update_journey_settings_sync, journey_id, name, description, lock_buttons_enabled, lock_active_series_enabled, lock_old_series_enabled, lock_day_based_enabled, lock_time_window, lock_individual_enabled, db_channel_id, update_channel_id, update_msg_template, button_name_template, is_locked)
 
 async def reset_journey_locks(journey_id: int):
     return await asyncio.to_thread(_reset_journey_locks_sync, journey_id)

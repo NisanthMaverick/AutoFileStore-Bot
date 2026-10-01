@@ -430,6 +430,88 @@ async def handle_files_states(client: Client, message: Message, state: str, stat
             await message.reply_text(f"✅ {feedback}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Journey", callback_data=f"manage_journey_{journey_id}")]]))
             return True
 
+    # 2.10 Waiting for Journey Update Channel ID
+    elif state == "waiting_for_j_update_channel":
+        val = message.text.strip()
+        journey_id = state_data["data"]["journey_id"]
+        
+        if val.lower() in ["none", "disable", "off", "reset"]:
+            update_channel_id = ""
+            feedback = "Journey Episode Update Alerts disabled."
+        else:
+            if not val.startswith("-100") or not val[4:].isdigit():
+                if not (val.startswith("-") and val[1:].isdigit()) and not val.isdigit():
+                    await message.reply_text("⚠️ Invalid Channel ID format. Numerical ID starting with `-100` expected. Try again or send /cancel.")
+                    return True
+            update_channel_id = val
+            feedback = f"Journey Episode Update Channel set to `{update_channel_id}`."
+            
+        await database.update_journey_settings(journey_id, update_channel_id=update_channel_id)
+        ADMIN_STATES.pop(user_id, None)
+        await log_admin_action(f"📢 **Journey Update Channel Set** (ID: {journey_id}): `{feedback}` by {message.from_user.mention}")
+        
+        from .ui_files import show_journey_detail
+        if message_id:
+            try:
+                await show_journey_detail(client, message.chat.id, message_id, journey_id)
+                return True
+            except Exception:
+                pass
+        await message.reply_text(f"✅ {feedback}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Journey", callback_data=f"manage_journey_{journey_id}")]]))
+        return True
+
+    # 2.11 Waiting for Journey Update Message Template
+    elif state == "waiting_for_j_update_template":
+        val = message.text.strip()
+        journey_id = state_data["data"]["journey_id"]
+        
+        if val.lower() == "default":
+            update_msg_template = "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}"
+            feedback = "Update Notification Template reset to Default."
+        else:
+            update_msg_template = val
+            feedback = f"Update Notification Template updated."
+            
+        await database.update_journey_settings(journey_id, update_msg_template=update_msg_template)
+        ADMIN_STATES.pop(user_id, None)
+        await log_admin_action(f"💬 **Journey Update Template Set** (ID: {journey_id}) by {message.from_user.mention}")
+        
+        from .ui_files import show_journey_detail
+        if message_id:
+            try:
+                await show_journey_detail(client, message.chat.id, message_id, journey_id)
+                return True
+            except Exception:
+                pass
+        await message.reply_text(f"✅ {feedback}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Journey", callback_data=f"manage_journey_{journey_id}")]]))
+        return True
+
+    # 2.12 Waiting for Journey Button Name Template
+    elif state == "waiting_for_j_button_template":
+        val = message.text.strip()
+        journey_id = state_data["data"]["journey_id"]
+        
+        if val.lower() == "default":
+            button_name_template = "📥 Ep ({start} - {end}) {date_small}"
+            feedback = "Button Format Template reset to Default (`📥 Ep ({start} - {end}) {date_small}`)."
+        else:
+            button_name_template = val
+            feedback = f"Button Format Template updated."
+            
+        await database.update_journey_settings(journey_id, button_name_template=button_name_template)
+        ADMIN_STATES.pop(user_id, None)
+        await log_admin_action(f"🔘 **Journey Button Template Set** (ID: {journey_id}) by {message.from_user.mention}")
+        
+        from .ui_files import show_journey_detail
+        if message_id:
+            try:
+                await show_journey_detail(client, message.chat.id, message_id, journey_id)
+                return True
+            except Exception:
+                pass
+        await message.reply_text(f"✅ {feedback}", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("🔙 Back to Journey", callback_data=f"manage_journey_{journey_id}")]]))
+        return True
+
     # 4. Waiting for Tree Folder Name
     elif state == "waiting_for_tree_folder_name":
         raw_text = message.text.strip()
