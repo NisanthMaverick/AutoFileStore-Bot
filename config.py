@@ -4,10 +4,43 @@ from dotenv import load_dotenv
 # Load variables from .env file
 load_dotenv()
 
-API_ID = int(os.environ.get("API_ID", 0))
-API_HASH = os.environ.get("API_HASH", "")
-MAIN_BOT_TOKEN = os.environ.get("MAIN_BOT_TOKEN", "")
-OWNER_ID = int(os.environ.get("OWNER_ID", 0))
+# Read API_ID (supports API_ID or TELEGRAM_API_ID)
+raw_api_id = os.environ.get("API_ID") or os.environ.get("TELEGRAM_API_ID") or "0"
+try:
+    API_ID = int(raw_api_id)
+except ValueError:
+    API_ID = 0
+
+# Read API_HASH (supports API_HASH or TELEGRAM_API_HASH)
+API_HASH = os.environ.get("API_HASH") or os.environ.get("TELEGRAM_API_HASH") or ""
+
+# Read Bot Token (supports MAIN_BOT_TOKEN, BOT_TOKEN, TELEGRAM_BOT_TOKEN, TOKEN)
+MAIN_BOT_TOKEN = (
+    os.environ.get("MAIN_BOT_TOKEN")
+    or os.environ.get("BOT_TOKEN")
+    or os.environ.get("TELEGRAM_BOT_TOKEN")
+    or os.environ.get("TOKEN")
+    or ""
+)
+BOT_TOKEN = MAIN_BOT_TOKEN
+
+# Read Owner / Admin ID (supports OWNER_ID, ADMIN_ID, ADMIN_IDS, ADMIN_USER_ID)
+raw_owner = (
+    os.environ.get("OWNER_ID")
+    or os.environ.get("ADMIN_ID")
+    or os.environ.get("ADMIN_IDS")
+    or os.environ.get("ADMIN_USER_ID")
+    or "0"
+)
+if "," in raw_owner:
+    raw_owner = raw_owner.split(",")[0].strip()
+try:
+    OWNER_ID = int(raw_owner)
+except ValueError:
+    OWNER_ID = 0
+ADMIN_ID = OWNER_ID
+
+# Read Database URL
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -34,8 +67,21 @@ if not SUBSCRIPTION_DATABASE_URL:
 if SUBSCRIPTION_DATABASE_URL.startswith("postgres://"):
     SUBSCRIPTION_DATABASE_URL = SUBSCRIPTION_DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
-if not API_ID or not API_HASH or not MAIN_BOT_TOKEN or not OWNER_ID or not DATABASE_URL:
-    raise ValueError("Missing critical configuration in environment variables or .env file.")
+# Detailed validation check with informative error message listing missing variables
+missing_vars = []
+if not API_ID:
+    missing_vars.append("API_ID / TELEGRAM_API_ID")
+if not API_HASH:
+    missing_vars.append("API_HASH / TELEGRAM_API_HASH")
+if not MAIN_BOT_TOKEN:
+    missing_vars.append("MAIN_BOT_TOKEN / BOT_TOKEN / TELEGRAM_BOT_TOKEN")
+if not OWNER_ID:
+    missing_vars.append("OWNER_ID / ADMIN_ID / ADMIN_IDS")
+if not DATABASE_URL:
+    missing_vars.append("DATABASE_URL")
+
+if missing_vars:
+    raise ValueError(f"Missing critical configuration in environment variables or .env file: {', '.join(missing_vars)}")
 
 # AI Web Series Automation Settings
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
@@ -50,4 +96,5 @@ if raw_sources:
             WEEKLY_SOURCE_CHANNELS.append(int(item))
         except ValueError:
             WEEKLY_SOURCE_CHANNELS.append(item)
+
 
