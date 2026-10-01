@@ -326,18 +326,18 @@ def _get_journey_sync(journey_id: int):
             return {
                 "id": j.id,
                 "name": j.name,
-                "description": j.description,
-                "lock_buttons_enabled": j.lock_buttons_enabled,
-                "lock_active_series_enabled": j.lock_active_series_enabled,
-                "lock_old_series_enabled": j.lock_old_series_enabled,
-                "lock_day_based_enabled": j.lock_day_based_enabled,
-                "lock_time_window": j.lock_time_window,
-                "lock_individual_enabled": j.lock_individual_enabled,
-                "db_channel_id": j.db_channel_id,
+                "description": getattr(j, "description", "") or "",
+                "lock_buttons_enabled": getattr(j, "lock_buttons_enabled", False),
+                "lock_active_series_enabled": getattr(j, "lock_active_series_enabled", False),
+                "lock_old_series_enabled": getattr(j, "lock_old_series_enabled", True),
+                "lock_day_based_enabled": getattr(j, "lock_day_based_enabled", False),
+                "lock_time_window": getattr(j, "lock_time_window", 0) or 0,
+                "lock_individual_enabled": getattr(j, "lock_individual_enabled", False),
+                "db_channel_id": getattr(j, "db_channel_id", "") or "",
                 "update_channel_id": getattr(j, "update_channel_id", "") or "",
                 "update_msg_template": getattr(j, "update_msg_template", "") or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}",
                 "button_name_template": getattr(j, "button_name_template", "") or "📥 Ep ({start} - {end}) {date_small}",
-                "is_locked": j.is_locked
+                "is_locked": getattr(j, "is_locked", False)
             }
         return None
 
@@ -347,18 +347,18 @@ def _list_journeys_sync():
         return [{
             "id": j.id,
             "name": j.name,
-            "description": j.description,
-            "lock_buttons_enabled": j.lock_buttons_enabled,
-            "lock_active_series_enabled": j.lock_active_series_enabled,
-            "lock_old_series_enabled": j.lock_old_series_enabled,
-            "lock_day_based_enabled": j.lock_day_based_enabled,
-            "lock_time_window": j.lock_time_window,
-            "lock_individual_enabled": j.lock_individual_enabled,
-            "db_channel_id": j.db_channel_id,
+            "description": getattr(j, "description", "") or "",
+            "lock_buttons_enabled": getattr(j, "lock_buttons_enabled", False),
+            "lock_active_series_enabled": getattr(j, "lock_active_series_enabled", False),
+            "lock_old_series_enabled": getattr(j, "lock_old_series_enabled", True),
+            "lock_day_based_enabled": getattr(j, "lock_day_based_enabled", False),
+            "lock_time_window": getattr(j, "lock_time_window", 0) or 0,
+            "lock_individual_enabled": getattr(j, "lock_individual_enabled", False),
+            "db_channel_id": getattr(j, "db_channel_id", "") or "",
             "update_channel_id": getattr(j, "update_channel_id", "") or "",
             "update_msg_template": getattr(j, "update_msg_template", "") or "{series_name} latest episode ({date}) updated ✅\n\nBot : @{bot_username}",
             "button_name_template": getattr(j, "button_name_template", "") or "📥 Ep ({start} - {end}) {date_small}",
-            "is_locked": j.is_locked
+            "is_locked": getattr(j, "is_locked", False)
         } for j in journeys]
 
 def _delete_journey_sync(journey_id: int) -> bool:

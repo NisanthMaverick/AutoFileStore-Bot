@@ -277,6 +277,30 @@ def db_init():
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE journeys ADD COLUMN description TEXT DEFAULT ''"))
             conn.commit()
+    if "lock_buttons_enabled" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_buttons_enabled BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+    if "lock_active_series_enabled" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_active_series_enabled BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+    if "lock_old_series_enabled" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_old_series_enabled BOOLEAN DEFAULT TRUE"))
+            conn.commit()
+    if "lock_day_based_enabled" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_day_based_enabled BOOLEAN DEFAULT FALSE"))
+            conn.commit()
+    if "lock_time_window" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_time_window INTEGER DEFAULT 0"))
+            conn.commit()
+    if "lock_individual_enabled" not in columns_journeys:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE journeys ADD COLUMN lock_individual_enabled BOOLEAN DEFAULT FALSE"))
+            conn.commit()
     if "update_channel_id" not in columns_journeys:
         with engine.connect() as conn:
             conn.execute(text("ALTER TABLE journeys ADD COLUMN update_channel_id VARCHAR DEFAULT ''"))
