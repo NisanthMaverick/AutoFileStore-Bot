@@ -320,6 +320,8 @@ async def show_journey_detail(client: Client, chat_id: int, message_id: int, jou
     active_lock = "Enabled ✅" if journey["lock_active_series_enabled"] else "Disabled ❌"
     old_lock = "Enabled ✅" if journey["lock_old_series_enabled"] else "Disabled ❌"
     indiv_lock = "Enabled ✅" if journey["lock_individual_enabled"] else "Disabled ❌"
+    db_channel = journey.get("db_channel_id")
+    db_status = f"`{db_channel}`" if db_channel else "_Default Settings Fallback_ ⚠️"
     up_chan = journey.get("update_channel_id")
     up_chan_status = f"`{up_chan}`" if up_chan else "_Disabled / Not Configured_ ❌"
     
